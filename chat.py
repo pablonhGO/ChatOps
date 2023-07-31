@@ -3,6 +3,7 @@ import subprocess
 #import logging
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
+from google.cloud import storage
 
 from langchain.agents import AgentType, initialize_agent
 from langchain.llms import VertexAI
@@ -56,6 +57,7 @@ def chat(question: str) -> Mapping[str, Any]:
 
   tool = [
       print_users_with_project_owner_access,
+      print_buckets,
   ]
   agent = initialize_agent(
       tool,
@@ -105,5 +107,30 @@ def print_users_with_project_owner_access(project_id: str) -> str:
                     members.append(member.replace("user:",""))
 
     response = "These are the users with Owner roles in the project - " + project_id + " :\n" + "\n".join(members)
+    print("Response: ", response)
+    return response
+
+
+@tool(return_direct=True)
+def print_buckets(project_id: str) -> str:
+    """
+    Use it to find the GCS buckets available in a specific GCP project.
+    
+    Args:
+        project_id: The ID of the GCP project the user refers to.
+  
+    Returns:
+        The buckets in the specified project.
+    """
+    
+    storage_client = storage.Client()
+
+    buckets = []
+    # List all the buckets available
+    for bucket in storage_client.list_buckets():
+        print(bucket.name)
+        buckets.append(bucket.name)
+
+    response = "These are the available buckets in the project:\n" + "\n".join(buckets)
     print("Response: ", response)
     return response
