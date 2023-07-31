@@ -1,5 +1,8 @@
 from typing import Any, Mapping
 import subprocess
+#import logging
+from googleapiclient import discovery
+from oauth2client.client import GoogleCredentials
 
 from langchain.agents import AgentType, initialize_agent
 from langchain.llms import VertexAI
@@ -86,25 +89,21 @@ def print_users_with_project_owner_access(project_id: str) -> str:
     Returns:
         The members with Owner role in the specified project.
     """
-    
-    command = [
-        'gcloud',
-        'projects',
-        'get-iam-policy',
-        project_id,
-        '--flatten=bindings',
-        '--filter=bindings.role:roles/owner', 
-        '--format=value(bindings.members)'
-    ]
-    
-    try:
-        output = subprocess.check_output(command)
-        result = output.decode('utf-8').split(';')
-        #print(result)
-        results = [member.replace("user:","") for member in result]
-        response = "These are the users with Owner roles in the project - " + project_id + " :\n" + "\n".join(results)
-        return response
-        #return "thank you"
-    except subprocess.CalledProcessError as e:
-        print(f'Error executing gcloud command: {e}')
-        return ""
+
+    credentials = GoogleCredentials.get_application_default()
+
+    service = discovery.build('cloudresourcemanager', 'v3')
+
+    resource = 'projects/' + project_id
+
+    response = service.projects().getIamPolicy(resource=resource, body={}).execute()
+    members = []
+    for binding in response['bindings']:
+            if binding['role'] == "roles/owner":            
+                for member in binding['members']:
+                    print(member)
+                    members.append(member.replace("user:",""))
+
+    response = "These are the users with Owner roles in the project - " + project_id + " :\n" + "\n".join(members)
+    print("Response: ", response)
+    return response
